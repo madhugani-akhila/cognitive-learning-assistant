@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Cognitive AI Learning Assistant</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+
+    <!-- ==============================
+         HEADER
+    =============================== -->
+
+    <header class="header">
+
+        <h1>
+            🧠 Cognitive AI Learning Assistant
+        </h1>
+
+        <p>
+            Understand • Visualize • Listen • Practice • Improve
+        </p>
+
+    </header>
+
+
+
+    <!-- ==============================
+         MAIN CONTENT
+    =============================== -->
+
+    <main class="container">
+
+
+        <!-- ==============================
+             AI TUTOR INTRODUCTION
+        =============================== -->
+
+        <section class="card tutor-card">
+
+            <div class="tutor-icon">
+                👨‍🏫
+            </div>
+
+
+            <div class="tutor-content">
+
+                <h2>
+                    Your AI Tutor
+                </h2>
+
+
+                <p id="tutor-message">
+
+                    Hello everyone! 👋
+                    Welcome to your Cognitive AI Learning Assistant.
+
+                    <br><br>
+
+                    I am your personal AI tutor, here to help you
+                    learn Python, Artificial Intelligence, and
+                    Machine Learning in a simple and understandable way.
+
+                    <br><br>
+
+                    Ask me a question and I will explain the concept
+                    step by step, provide practical examples, show
+                    visual representations, and help you test your
+                    understanding with interactive quizzes.
+
+                    <br><br>
+
+                    You can choose Beginner, Intermediate, or Advanced
+                    learning levels according to your knowledge.
+
+                    <br><br>
+
+                    Let's learn, practice, and improve together! 🚀
+
+                </p>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==============================
+             TUTOR AUDIO
+        =============================== -->
+
+        <section class="card audio-card">
+
+            <h2>
+                🔊 Tutor Voice
+            </h2>
+
+
+            <p>
+                Listen to your AI tutor introduction.
+            </p>
+
+
+            <audio
+                id="tutorAudio"
+                controls
+                preload="metadata"
+            >
+
+                <source
+                    src="{{ url_for(
+                        'static',
+                        filename='audio/guido_audio.mp3'
+                    ) }}"
+                    type="audio/mpeg"
+                >
+
+                Your browser does not support
+                the audio element.
+
+            </audio>
+
+        </section>
+
+
+
+        <!-- ==============================
+             LEARNING LEVEL
+        =============================== -->
+
+        <section class="card">
+
+            <h2>
+                🎯 Choose Your Learning Level
+            </h2>
+
+
+            <p>
+                Select the level that matches your
+                current understanding.
+            </p>
+
+
+            <select id="level">
+
+                <option value="beginner">
+                    🌱 Beginner
+                </option>
+
+                <option value="intermediate">
+                    📚 Intermediate
+                </option>
+
+                <option value="advanced">
+                    🚀 Advanced
+                </option>
+
+            </select>
+
+        </section>
+
+
+
+        <!-- ==============================
+             ASK THE AI TUTOR
+        =============================== -->
+
+        <section class="card question-card">
+
+            <h2>
+                💡 Ask Your Tutor
+            </h2>
+
+
+            <p>
+                Ask a question about Python,
+                Artificial Intelligence, or
+                Machine Learning.
+            </p>
+
+
+            <textarea
+                id="question"
+                rows="6"
+                placeholder="Example: Explain Python for loop in simple terms..."
+            ></textarea>
+
+
+            <button
+                id="askButton"
+                onclick="askTutor()"
+            >
+
+                🎓 Ask Tutor
+
+            </button>
+
+        </section>
+
+
+
+        <!-- ==============================
+             AI EXPLANATION
+        =============================== -->
+
+        <section class="card answer-card">
+
+            <h2>
+                🤖 Personalized Explanation
+            </h2>
+
+
+            <div id="answer">
+
+                Your personalized explanation
+                will appear here.
+
+            </div>
+
+
+            <button
+                id="speakButton"
+                onclick="speakAnswer()"
+                disabled
+            >
+
+                🔊 Listen to Explanation
+
+            </button>
+
+        </section>
+
+
+
+        <!-- ==============================
+             VISUAL LEARNING
+        =============================== -->
+
+        <section class="card visual-card">
+
+            <h2>
+                📊 Visual Learning
+            </h2>
+
+
+            <p>
+                Understand the concept through
+                a simple visual representation.
+            </p>
+
+
+            <pre id="visual">
+
+Your visual explanation
+will appear here.
+
+            </pre>
+
+        </section>
+
+
+
+        <!-- ==============================
+             MINI QUIZ
+        =============================== -->
+
+        <section
+            class="card"
+            id="quizSection"
+            style="display: none;"
+        >
+
+            <h2>
+                📝 Test Your Understanding
+            </h2>
+
+
+            <p>
+                Answer this question to check
+                your understanding.
+            </p>
+
+
+            <h3 id="quizQuestion">
+
+            </h3>
+
+
+            <div id="quizOptions">
+
+            </div>
+
+
+            <p id="quizResult">
+
+            </p>
+
+        </section>
+
+
+
+        <!-- ==============================
+             LEARNING PROGRESS
+        =============================== -->
+
+        <section class="card">
+
+            <h2>
+                📈 Learning Progress
+            </h2>
+
+
+            <div class="progress-info">
+
+                <p>
+                    Questions Asked:
+                    <strong id="questionsCount">
+                        0
+                    </strong>
+                </p>
+
+
+                <p>
+                    Correct Answers:
+                    <strong id="correctCount">
+                        0
+                    </strong>
+                </p>
+
+
+                <p>
+                    Incorrect Answers:
+                    <strong id="wrongCount">
+                        0
+                    </strong>
+                </p>
+
+            </div>
+
+
+            <div class="progress-container">
+
+                <div
+                    id="progressBar"
+                    class="progress-bar"
+                >
+
+                    0%
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==============================
+             COGNITIVE RECOMMENDATION
+        =============================== -->
+
+        <section class="card recommendation-card">
+
+            <h2>
+                🎯 Cognitive Learning Recommendation
+            </h2>
+
+
+            <p id="recommendation">
+
+                Complete a quiz to receive
+                personalized learning advice.
+
+            </p>
+
+        </section>
+
+
+    </main>
+
+
+
+    <!-- ==============================
+         FOOTER
+    =============================== -->
+
+    <footer>
+
+        <p>
+            🧠 Cognitive AI Learning Assistant
+        </p>
+
+
+        <p>
+            Built with Python + Flask + AI
+        </p>
+
+    </footer>
+
+
+
+    <!-- ==============================
+         JAVASCRIPT
+    =============================== -->
+
+    <script
+        src="{{ url_for(
+            'static',
+            filename='script.js'
+        ) }}"
+    ></script>
+
+
+</body>
+
+</html>
