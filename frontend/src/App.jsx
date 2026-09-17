@@ -373,7 +373,7 @@ console.log("QUIZ OPTIONS:", data.quiz?.options);
           >
 
             <source
-              src="http://127.0.0.1:5000/static/audio/guido_audio.mp3"
+              src="/static/audio/guido_audio.mp3"
               type="audio/mpeg"
             />
 
