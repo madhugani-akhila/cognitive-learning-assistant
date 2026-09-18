@@ -3,24 +3,33 @@ import ReactMarkdown from "react-markdown";
 
 import {
   Brain,
-  GraduationCap,
-  Volume2,
-  Target,
-  Lightbulb,
+  Home,
+  CircleHelp,
+  BookOpen,
+  Trophy,
+  Settings,
   Bot,
-  BarChart3,
+  Send,
+  Lightbulb,
+  Target,
+  Volume2,
+  Image as ImageIcon,
   ClipboardCheck,
   CheckCircle,
   XCircle,
-  Send,
-  Trophy
+  BarChart3,
+  Sparkles,
+  ChevronRight,
+  Moon,
+  User,
+  GraduationCap,
+  Rocket,
+  MessageCircle,
 } from "lucide-react";
 
 import "./App.css";
 
-
 function App() {
-
   const [question, setQuestion] = useState("");
   const [level, setLevel] = useState("beginner");
 
@@ -32,10 +41,9 @@ function App() {
     "Your visual explanation will appear here."
   );
 
-  const [currentAnswer, setCurrentAnswer] = useState("");
-
   const [quiz, setQuiz] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [quizResult, setQuizResult] = useState("");
 
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
@@ -43,734 +51,988 @@ function App() {
 
   const [loading, setLoading] = useState(false);
 
-
-  // =========================
+  // --------------------------------
   // ASK AI TUTOR
-  // =========================
+  // --------------------------------
 
   async function askTutor() {
-
-    if (question.trim() === "") {
+    if (!question.trim()) {
       alert("Please enter a question.");
       return;
     }
 
     setLoading(true);
-
-    setAnswer("🤔 Your tutor is thinking...");
     setQuiz(null);
     setSelectedAnswer("");
+    setQuizResult("");
 
     try {
-
       const response = await fetch("/ask", {
-
         method: "POST",
-
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           question: question,
-          level: level
-        })
-
+          level: level,
+        }),
       });
-
 
       const data = await response.json();
 
-    console.log("FULL DATA:", data);
-console.log("QUIZ DATA:", data.quiz);
-console.log("QUIZ OPTIONS:", data.quiz?.options);
-      if (data.error) {
+      console.log("AI RESPONSE:", data);
+      console.log("QUIZ:", data.quiz);
 
-        alert(data.error);
-
-        setAnswer(
-          "Something went wrong. Please check the Flask terminal."
-        );
-
-        return;
+      if (!response.ok || data.error) {
+        throw new Error(data.error || "Something went wrong");
       }
 
+      setAnswer(data.explanation || "No explanation received.");
+      setVisual(data.visual || "No visual explanation available.");
+      setQuiz(data.quiz || null);
 
-      // Explanation
-
-      setCurrentAnswer(data.explanation);
-
-      setAnswer(data.explanation);
-
-
-      // Visual
-
-      setVisual(data.visual);
-
-
-      // Quiz
-
-      setQuiz(data.quiz);
-
-
-      // Progress
-
-      setQuestionsAnswered(
-        previous => previous + 1
-      );
-
-    }
-
-    catch (error) {
-
-      console.error(error);
+      setQuestionsAnswered((previous) => previous + 1);
+    } catch (error) {
+      console.error("ASK ERROR:", error);
 
       setAnswer(
-        "Something went wrong. Make sure Flask is running."
+        "Something went wrong. Please check your backend connection."
       );
 
-    }
+      setVisual(
+        "The visual explanation could not be loaded."
+      );
 
-    finally {
-
+      setQuiz(null);
+    } finally {
       setLoading(false);
-
     }
-
   }
 
+  // --------------------------------
+  // QUIZ
+  // --------------------------------
 
-  // =========================
-  // CHECK QUIZ ANSWER
-  // =========================
-
-  function checkAnswer(option) {
-
-    if (selectedAnswer !== "") {
+  async function checkAnswer(option) {
+    if (!quiz || selectedAnswer !== "") {
       return;
     }
 
     setSelectedAnswer(option);
 
+    const isCorrect = option === quiz.answer;
 
-    if (option === quiz.answer) {
-
-      setCorrectAnswers(
-        previous => previous + 1
+    if (isCorrect) {
+      setCorrectAnswers((previous) => previous + 1);
+      setQuizResult("Correct! Excellent work 🎉");
+    } else {
+      setWrongAnswers((previous) => previous + 1);
+      setQuizResult(
+        `Not quite. The correct answer is: ${quiz.answer}`
       );
-
     }
 
-    else {
-
-      setWrongAnswers(
-        previous => previous + 1
-      );
-
+    try {
+      await fetch("/quiz-result", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: quiz.question,
+          selected_answer: option,
+          correct_answer: quiz.answer,
+          is_correct: isCorrect,
+        }),
+      });
+    } catch (error) {
+      console.error("QUIZ RESULT ERROR:", error);
     }
-
   }
 
+  // --------------------------------
+  // SPEECH
+  // --------------------------------
 
-  // =========================
-  // PROGRESS
-  // =========================
-
-  const totalQuiz =
-    correctAnswers + wrongAnswers;
-
-
-  let percentage = 0;
-
-
-  if (totalQuiz > 0) {
-
-    percentage =
-      Math.round(
-        (correctAnswers / totalQuiz) * 100
-      );
-
-  }
-
-
-  // =========================
-  // RECOMMENDATION
-  // =========================
-
-  let recommendation =
-    "Complete a quiz to receive personalized learning advice.";
-
-
-  if (wrongAnswers > correctAnswers) {
-
-    recommendation =
-      "🧠 You may need more practice. Review the explanation, listen to it again, and try another example.";
-
-  }
-
-  else if (correctAnswers >= 3) {
-
-    recommendation =
-      "🌟 Great progress! You understand these concepts well. Try moving to the Intermediate or Advanced level.";
-
-  }
-
-  else if (totalQuiz > 0) {
-
-    recommendation =
-      "👍 Good start. Continue practicing and complete more quizzes to strengthen your understanding.";
-
-  }
-
-
-  // =========================
-  // TEXT TO SPEECH
-  // =========================
-
-  function speakAnswer() {
-
-    if (currentAnswer === "") {
-      return;
-    }
-
+  function speakExplanation() {
+    if (!answer) return;
 
     window.speechSynthesis.cancel();
 
+    const speech = new SpeechSynthesisUtterance(answer);
 
-    const speech =
-      new SpeechSynthesisUtterance(
-        currentAnswer
-      );
-
-
+    speech.lang = "en-US";
     speech.rate = 0.9;
     speech.pitch = 1;
-    speech.volume = 1;
 
-
-    window.speechSynthesis.speak(
-      speech
-    );
-
+    window.speechSynthesis.speak(speech);
   }
 
+  // --------------------------------
+  // PROGRESS
+  // --------------------------------
+
+  const accuracy =
+    questionsAnswered > 0
+      ? Math.round((correctAnswers / questionsAnswered) * 100)
+      : 0;
 
   return (
-
     <div className="app">
 
+      {/* ================================= */}
+      {/* TOP HEADER */}
+      {/* ================================= */}
 
-      {/* =========================
-          HEADER
-      ========================= */}
+      <header className="top-header">
 
-      <header className="header">
+        <div className="logo-area">
 
-        <div className="header-icon">
+          <div className="logo-icon">
+            <Brain size={30} />
+          </div>
 
-          <Brain size={38} />
+          <div>
+            <h1>Cognitive Learning Assistant</h1>
+
+            <p>
+              Understand • Visualize • Listen • Practice • Improve
+            </p>
+          </div>
 
         </div>
 
+        <div className="header-actions">
 
-        <h1>
-          Cognitive AI Learning Assistant
-        </h1>
+          <div className="ai-status">
+            <span></span>
+            AI Tutor
+          </div>
 
+          <button className="icon-button">
+            <Moon size={19} />
+          </button>
 
-        <p>
-          Understand • Visualize • Listen • Practice • Improve
-        </p>
+          <div className="profile-circle">
+            <User size={19} />
+          </div>
+
+        </div>
 
       </header>
 
 
+      <div className="dashboard-layout">
 
-      <main className="container">
+        {/* ================================= */}
+        {/* SIDEBAR */}
+        {/* ================================= */}
 
+        <aside className="sidebar">
 
-        {/* =========================
-            AI TUTOR
-        ========================= */}
+          <nav>
 
-        <section className="card tutor-card">
+            <button className="nav-item active">
+              <Home size={20} />
+              <span>Home</span>
+            </button>
 
-          <div className="tutor-icon">
+            <button className="nav-item">
+              <CircleHelp size={20} />
+              <span>Ask Tutor</span>
+            </button>
 
-            <GraduationCap size={48} />
+            <button className="nav-item">
+              <BookOpen size={20} />
+              <span>Learning Progress</span>
+            </button>
 
-          </div>
+            <button className="nav-item">
+              <Trophy size={20} />
+              <span>Achievements</span>
+            </button>
 
+            <button className="nav-item">
+              <Settings size={20} />
+              <span>Settings</span>
+            </button>
 
-          <div>
-
-            <h2>
-              Your AI Tutor
-            </h2>
-
-
-            <p>
-
-              Hello everyone! 👋
-              Welcome to your Cognitive AI Learning Assistant.
-
-              <br /><br />
-
-              I am your personal AI tutor, here to help you
-              learn Python, Artificial Intelligence, and
-              Machine Learning in a simple and understandable way.
-
-              <br /><br />
-
-              Ask me a question and I will explain the concept
-              step by step, provide practical examples, show
-              visual representations, and help you test your
-              understanding with interactive quizzes.
-
-              <br /><br />
-
-              You can choose Beginner, Intermediate, or Advanced
-              learning levels according to your knowledge.
-
-              <br /><br />
-
-              Let's learn, practice, and improve together! 🚀
-
-            </p>
-
-          </div>
-
-        </section>
+          </nav>
 
 
+          {/* SIDEBAR AI CARD */}
 
-        {/* =========================
-            AUDIO
-        ========================= */}
+          <div className="sidebar-ai-card">
 
-        <section className="card">
+            <div className="mini-bot">
+              <Bot size={32} />
+            </div>
 
-          <div className="section-title">
+            <div>
+              <strong>Your AI Tutor</strong>
 
-            <Volume2 size={25} />
-
-            <h2>
-              Tutor Voice
-            </h2>
+              <p>
+                Always here to help you learn and grow.
+              </p>
+            </div>
 
           </div>
 
+        </aside>
 
-          <p>
-            Listen to your AI tutor introduction.
-          </p>
 
+        {/* ================================= */}
+        {/* MAIN CONTENT */}
+        {/* ================================= */}
 
-          <audio
-            controls
-            preload="metadata"
-            className="audio-player"
-          >
+        <main className="main-content">
 
-            <source
-              src="/static/audio/guido_audio.mp3"
-              type="audio/mpeg"
-            />
 
-            Your browser does not support
-            the audio element.
+          {/* ================================= */}
+          {/* HERO */}
+          {/* ================================= */}
 
-          </audio>
+          <section className="hero-dashboard">
 
-        </section>
+            <div className="hero-left">
 
-
-
-        {/* =========================
-            LEARNING LEVEL
-        ========================= */}
-
-        <section className="card">
-
-          <div className="section-title">
-
-            <Target size={25} />
-
-            <h2>
-              Choose Your Learning Level
-            </h2>
-
-          </div>
-
-
-          <p>
-            Select the level that matches your
-            current understanding.
-          </p>
-
-
-          <select
-            value={level}
-            onChange={(event) =>
-              setLevel(event.target.value)
-            }
-          >
-
-            <option value="beginner">
-              🌱 Beginner
-            </option>
-
-            <option value="intermediate">
-              📚 Intermediate
-            </option>
-
-            <option value="advanced">
-              🚀 Advanced
-            </option>
-
-          </select>
-
-        </section>
-
-
-
-        {/* =========================
-            ASK TUTOR
-        ========================= */}
-
-        <section className="card question-card">
-
-          <div className="section-title">
-
-            <Lightbulb size={25} />
-
-            <h2>
-              Ask Your Tutor
-            </h2>
-
-          </div>
-
-
-          <p>
-            Ask a question about Python,
-            Artificial Intelligence, or
-            Machine Learning.
-          </p>
-
-
-          <textarea
-            rows="6"
-            value={question}
-            onChange={(event) =>
-              setQuestion(event.target.value)
-            }
-            placeholder="Example: Explain Python for loop in simple terms..."
-          />
-
-
-          <button
-            className="primary-button"
-            onClick={askTutor}
-            disabled={loading}
-          >
-
-            {loading ? (
-
-              <>
-                <Bot size={20} />
-                Thinking...
-              </>
-
-            ) : (
-
-              <>
-                <Send size={20} />
-                Ask Tutor
-              </>
-
-            )}
-
-          </button>
-
-        </section>
-
-
-
-        {/* =========================
-            EXPLANATION
-        ========================= */}
-
-        <section className="card">
-
-          <div className="section-title">
-
-            <Bot size={25} />
-
-            <h2>
-              Personalized Explanation
-            </h2>
-
-          </div>
-
-
-          <div className="answer-box">
-
-            <ReactMarkdown>{answer}</ReactMarkdown>
-
-          </div>
-
-
-          <button
-            className="secondary-button"
-            onClick={speakAnswer}
-            disabled={currentAnswer === ""}
-          >
-
-            <Volume2 size={20} />
-
-            Listen to Explanation
-
-          </button>
-
-        </section>
-
-
-
-        {/* =========================
-            VISUAL
-        ========================= */}
-
-        <section className="card">
-
-          <div className="section-title">
-
-            <BarChart3 size={25} />
-
-            <h2>
-              Visual Learning
-            </h2>
-
-          </div>
-
-
-          <p>
-            Understand the concept through
-            a simple visual representation.
-          </p>
-
-
-          <div className="visual-box">
-    <ReactMarkdown>{visual}</ReactMarkdown>
-</div>
-
-            
-
-  
-
-        </section>
-
-
-
-        {/* =========================
-            QUIZ
-        ========================= */}
-
-        {quiz && (
-
-          <section className="card quiz-card">
-
-            <div className="section-title">
-
-              <ClipboardCheck size={25} />
+              <div className="hello">
+                👋 Hello, Aki!
+              </div>
 
               <h2>
-                Test Your Understanding
+                Learn smarter with your
+                <span> AI Tutor.</span>
               </h2>
 
-            </div>
+              <p>
+                Ask questions, explore concepts and build
+                your skills through personalized AI-powered
+                learning.
+              </p>
 
 
-            <p>
-              Answer this question to check
-              your understanding.
-            </p>
+              <div className="hero-feature-row">
+
+                <div className="hero-feature">
+                  <div className="feature-icon purple">
+                    <Lightbulb size={20} />
+                  </div>
+
+                  <span>
+                    Personalized
+                    <small>Learning</small>
+                  </span>
+                </div>
 
 
-            <h3>
-              {quiz.question}
-            </h3>
+                <div className="hero-feature">
+                  <div className="feature-icon cyan">
+                    <Target size={20} />
+                  </div>
+
+                  <span>
+                    Interactive
+                    <small>Explanations</small>
+                  </span>
+                </div>
 
 
-            <div className="quiz-options">
+                <div className="hero-feature">
+                  <div className="feature-icon blue">
+                    <Brain size={20} />
+                  </div>
 
-              {quiz.options.map(
-                (option, index) => (
-
-                  <button
-                    key={index}
-                    className={
-                      selectedAnswer === option
-                        ? option === quiz.answer
-                          ? "quiz-option correct"
-                          : "quiz-option wrong"
-                        : "quiz-option"
-                    }
-                    onClick={() =>
-                      checkAnswer(option)
-                    }
-                    disabled={selectedAnswer !== ""}
-                  >
-
-                    {option}
-
-                  </button>
-
-                )
-              )}
-
-            </div>
+                  <span>
+                    Visual
+                    <small>Learning</small>
+                  </span>
+                </div>
 
 
-            {selectedAnswer && (
+                <div className="hero-feature">
+                  <div className="feature-icon pink">
+                    <Sparkles size={20} />
+                  </div>
 
-              <div className="quiz-result">
-
-                {selectedAnswer === quiz.answer ? (
-
-                  <>
-                    <CheckCircle size={22} />
-                    Correct! Excellent work.
-                  </>
-
-                ) : (
-
-                  <>
-                    <XCircle size={22} />
-                    Not quite. Correct answer: {quiz.answer}
-                  </>
-
-                )}
+                  <span>
+                    AI
+                    <small>Powered</small>
+                  </span>
+                </div>
 
               </div>
 
-            )}
-
-          </section>
-
-        )}
+            </div>
 
 
+            <div className="hero-bot">
 
-        {/* =========================
-            PROGRESS
-        ========================= */}
+              <div className="bot-glow">
+                <Bot size={95} />
+              </div>
 
-        <section className="card">
-
-          <div className="section-title">
-
-            <Trophy size={25} />
-
-            <h2>
-              Learning Progress
-            </h2>
-
-          </div>
-
-
-          <div className="progress-info">
-
-            <p>
-              Questions Asked:
-              <strong>{questionsAnswered}</strong>
-            </p>
-
-
-            <p>
-              Correct Answers:
-              <strong>{correctAnswers}</strong>
-            </p>
-
-
-            <p>
-              Incorrect Answers:
-              <strong>{wrongAnswers}</strong>
-            </p>
-
-          </div>
-
-
-          <div className="progress-container">
-
-            <div
-              className="progress-bar"
-              style={{
-                width: `${percentage}%`
-              }}
-            >
-
-              {percentage}%
+              <div className="speech-bubble">
+                Let's Learn! 🚀
+              </div>
 
             </div>
 
+          </section>
+
+
+          {/* ================================= */}
+          {/* TOP GRID */}
+          {/* ================================= */}
+
+          <div className="top-grid">
+
+
+            {/* ================================= */}
+            {/* ASK TUTOR */}
+            {/* ================================= */}
+
+            <section className="dashboard-card ask-card">
+
+              <div className="card-heading">
+
+                <div className="heading-icon">
+                  <MessageCircle size={22} />
+                </div>
+
+                <div>
+                  <h3>Ask Your AI Tutor</h3>
+
+                  <p>
+                    Get instant answers with clear explanations,
+                    visuals and a quick quiz.
+                  </p>
+                </div>
+
+              </div>
+
+
+              <textarea
+                value={question}
+                onChange={(event) =>
+                  setQuestion(event.target.value)
+                }
+                placeholder="Type your question here..."
+                maxLength={500}
+              />
+
+              <div className="input-footer">
+                <span>{question.length}/500</span>
+              </div>
+
+
+              <div className="ask-controls">
+
+                <div className="level-select">
+
+                  <GraduationCap size={19} />
+
+                  <select
+                    value={level}
+                    onChange={(event) =>
+                      setLevel(event.target.value)
+                    }
+                  >
+
+                    <option value="beginner">
+                      Beginner
+                    </option>
+
+                    <option value="intermediate">
+                      Intermediate
+                    </option>
+
+                    <option value="advanced">
+                      Advanced
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <button
+                  className="primary-button"
+                  onClick={askTutor}
+                  disabled={loading}
+                >
+
+                  {loading ? (
+                    <>
+                      <Brain size={19} />
+                      Thinking...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={19} />
+                      Ask Tutor
+                    </>
+                  )}
+
+                </button>
+
+              </div>
+
+            </section>
+
+
+            {/* ================================= */}
+            {/* LEARNING FEATURES */}
+            {/* ================================= */}
+
+            <section className="dashboard-card features-card">
+
+              <div className="simple-heading">
+
+                <Sparkles size={21} />
+
+                <h3>Learning Features</h3>
+
+              </div>
+
+
+              <div className="feature-list">
+
+                <div className="feature-row">
+
+                  <div className="row-icon purple-bg">
+                    <BookOpen size={20} />
+                  </div>
+
+                  <div>
+                    <strong>Concept Explanation</strong>
+                    <span>Simple and clear explanations</span>
+                  </div>
+
+                  <ChevronRight size={18} />
+
+                </div>
+
+
+                <div className="feature-row">
+
+                  <div className="row-icon green-bg">
+                    <ImageIcon size={20} />
+                  </div>
+
+                  <div>
+                    <strong>Visual Learning</strong>
+                    <span>Diagrams and visual representations</span>
+                  </div>
+
+                  <ChevronRight size={18} />
+
+                </div>
+
+
+                <div className="feature-row">
+
+                  <div className="row-icon pink-bg">
+                    <Volume2 size={20} />
+                  </div>
+
+                  <div>
+                    <strong>Audio Tutor</strong>
+                    <span>Listen to explanations</span>
+                  </div>
+
+                  <ChevronRight size={18} />
+
+                </div>
+
+
+                <div className="feature-row">
+
+                  <div className="row-icon orange-bg">
+                    <ClipboardCheck size={20} />
+                  </div>
+
+                  <div>
+                    <strong>Quick Quiz</strong>
+                    <span>Test your understanding</span>
+                  </div>
+
+                  <ChevronRight size={18} />
+
+                </div>
+
+              </div>
+
+            </section>
+
+
+            {/* ================================= */}
+            {/* PROGRESS */}
+            {/* ================================= */}
+
+            <section className="dashboard-card progress-card">
+
+              <div className="simple-heading">
+
+                <BarChart3 size={21} />
+
+                <h3>Your Progress</h3>
+
+              </div>
+
+
+              <div className="progress-circle">
+
+                <div>
+                  <strong>{accuracy}%</strong>
+                  <span>Accuracy</span>
+                </div>
+
+              </div>
+
+
+              <div className="stats-grid">
+
+                <div className="stat-box">
+                  <MessageCircle size={18} />
+                  <strong>{questionsAnswered}</strong>
+                  <span>Questions Asked</span>
+                </div>
+
+                <div className="stat-box">
+                  <CheckCircle size={18} />
+                  <strong>{correctAnswers}</strong>
+                  <span>Correct</span>
+                </div>
+
+                <div className="stat-box">
+                  <XCircle size={18} />
+                  <strong>{wrongAnswers}</strong>
+                  <span>Incorrect</span>
+                </div>
+
+                <div className="stat-box">
+                  <Trophy size={18} />
+                  <strong>{accuracy}%</strong>
+                  <span>Accuracy</span>
+                </div>
+
+              </div>
+
+            </section>
+
           </div>
 
-        </section>
+
+          {/* ================================= */}
+          {/* EXPLANATION */}
+          {/* ================================= */}
+
+          <section className="dashboard-card explanation-card">
+
+            <div className="simple-heading">
+
+              <div className="heading-icon">
+                <Lightbulb size={21} />
+              </div>
+
+              <div>
+                <h3>Personalized Explanation</h3>
+
+                <p>
+                  Learn the concept according to your selected level.
+                </p>
+              </div>
+
+            </div>
 
 
+            <div className="content-box">
 
-        {/* =========================
-            RECOMMENDATION
-        ========================= */}
+              <ReactMarkdown>
+                {answer}
+              </ReactMarkdown>
 
-        <section className="card recommendation-card">
+            </div>
 
-          <div className="section-title">
 
-            <Target size={25} />
+            <button
+              className="secondary-button"
+              onClick={speakExplanation}
+            >
 
-            <h2>
-              Cognitive Learning Recommendation
-            </h2>
+              <Volume2 size={18} />
+
+              Listen to Explanation
+
+            </button>
+
+          </section>
+
+
+          {/* ================================= */}
+          {/* VISUAL + AUDIO */}
+          {/* ================================= */}
+
+          <div className="two-column">
+
+
+            {/* VISUAL */}
+
+            <section className="dashboard-card">
+
+              <div className="simple-heading">
+
+                <div className="heading-icon blue-icon">
+                  <ImageIcon size={21} />
+                </div>
+
+                <div>
+                  <h3>Visual Learning</h3>
+
+                  <p>
+                    Understand concepts visually.
+                  </p>
+                </div>
+
+              </div>
+
+
+              <div className="visual-content">
+
+                <ReactMarkdown>
+                  {visual}
+                </ReactMarkdown>
+
+              </div>
+
+            </section>
+
+
+            {/* AUDIO */}
+
+            <section className="dashboard-card">
+
+              <div className="simple-heading">
+
+                <div className="heading-icon pink-icon">
+                  <Volume2 size={21} />
+                </div>
+
+                <div>
+                  <h3>AI Tutor Introduction</h3>
+
+                  <p>
+                    Listen to your tutor introduction.
+                  </p>
+                </div>
+
+              </div>
+
+
+              <div className="audio-wrapper">
+
+                <div className="audio-icon">
+                  <Bot size={30} />
+                </div>
+
+                <div className="audio-text">
+
+                  <strong>
+                    Your AI Tutor
+                  </strong>
+
+                  <span>
+                    Welcome to your personalized learning journey.
+                  </span>
+
+                </div>
+
+              </div>
+
+
+              {/* FILE IS INSIDE frontend/public */}
+
+              <audio
+                controls
+                preload="metadata"
+                className="audio-player"
+              >
+
+                <source
+                  src="/guido_audio.mp3"
+                  type="audio/mpeg"
+                />
+
+                Your browser does not support audio.
+
+              </audio>
+
+            </section>
 
           </div>
 
 
-          <p>
-            {recommendation}
-          </p>
+          {/* ================================= */}
+          {/* QUIZ */}
+          {/* ================================= */}
 
-        </section>
+          {quiz && (
+
+            <section className="dashboard-card quiz-card">
+
+              <div className="simple-heading">
+
+                <div className="heading-icon orange-icon">
+                  <ClipboardCheck size={21} />
+                </div>
+
+                <div>
+                  <h3>Quick Quiz</h3>
+
+                  <p>
+                    Check your understanding.
+                  </p>
+                </div>
+
+              </div>
 
 
-      </main>
+              <div className="quiz-question">
+
+                <span>QUESTION</span>
+
+                <h4>
+                  {quiz.question}
+                </h4>
+
+              </div>
 
 
+              <div className="quiz-options">
 
-      {/* =========================
-          FOOTER
-      ========================= */}
+                {quiz.options?.map((option, index) => {
 
-      <footer>
+                  const correct =
+                    selectedAnswer !== "" &&
+                    option === quiz.answer;
 
-        <p>
-          <Brain size={18} />
-          Cognitive AI Learning Assistant
-        </p>
+                  const wrong =
+                    selectedAnswer === option &&
+                    option !== quiz.answer;
+
+                  return (
+
+                    <button
+                      key={index}
+                      className={`quiz-option ${
+                        correct ? "correct" : ""
+                      } ${
+                        wrong ? "wrong" : ""
+                      }`}
+                      onClick={() => checkAnswer(option)}
+                      disabled={selectedAnswer !== ""}
+                    >
+
+                      <span className="option-number">
+                        {index + 1}
+                      </span>
+
+                      <span className="option-text">
+                        {option}
+                      </span>
+
+                      {correct && (
+                        <CheckCircle size={20} />
+                      )}
+
+                      {wrong && (
+                        <XCircle size={20} />
+                      )}
+
+                    </button>
+
+                  );
+                })}
+
+              </div>
 
 
-        <p>
-          Built with Python + Flask + React + AI
-        </p>
+              {quizResult && (
 
-      </footer>
+                <div className="quiz-result">
 
+                  {selectedAnswer === quiz.answer ? (
+                    <CheckCircle size={20} />
+                  ) : (
+                    <XCircle size={20} />
+                  )}
+
+                  <span>
+                    {quizResult}
+                  </span>
+
+                </div>
+
+              )}
+
+            </section>
+
+          )}
+
+
+          {/* ================================= */}
+          {/* BOTTOM GRID */}
+          {/* ================================= */}
+
+          <div className="bottom-grid">
+
+
+            {/* RECENT TOPICS */}
+
+            <section className="dashboard-card">
+
+              <div className="card-top-line">
+
+                <div className="simple-heading">
+
+                  <BookOpen size={21} />
+
+                  <h3>Recent Topics</h3>
+
+                </div>
+
+                <span className="view-all">
+                  View All
+                </span>
+
+              </div>
+
+
+              <div className="topic-tags">
+
+                <span>Python Basics</span>
+                <span>Loops & Conditions</span>
+                <span>Functions</span>
+                <span>Data Structures</span>
+                <span>AI & Machine Learning</span>
+
+              </div>
+
+            </section>
+
+
+            {/* LEARNING JOURNEY */}
+
+            <section className="dashboard-card">
+
+              <div className="simple-heading">
+
+                <Target size={21} />
+
+                <h3>Your Learning Journey</h3>
+
+              </div>
+
+              <p className="journey-text">
+                Small steps every day lead to big results.
+              </p>
+
+
+              <div className="journey">
+
+                {[1, 2, 3, 4, 5].map((step) => (
+
+                  <div
+                    key={step}
+                    className={`journey-step ${
+                      step === 1 ? "active" : ""
+                    }`}
+                  >
+                    {step}
+                  </div>
+
+                ))}
+
+              </div>
+
+
+              <div className="journey-message">
+
+                <Rocket size={17} />
+
+                Keep going! You're doing great!
+
+              </div>
+
+            </section>
+
+
+            {/* RECOMMENDATION */}
+
+            <section className="dashboard-card recommendation-card">
+
+              <div className="simple-heading">
+
+                <Lightbulb size={21} />
+
+                <h3>Learning Recommendation</h3>
+
+              </div>
+
+
+              <div className="recommendation-box">
+
+                <div>
+                  <Rocket size={23} />
+                </div>
+
+                <p>
+
+                  {questionsAnswered === 0
+                    ? "Start with your first question and begin your personalized learning journey."
+                    : accuracy >= 80
+                    ? "Great progress! Try an intermediate or advanced question."
+                    : "Keep practicing. Ask the tutor for another explanation of the concept."
+                  }
+
+                </p>
+
+                <ChevronRight size={19} />
+
+              </div>
+
+            </section>
+
+          </div>
+
+
+          {/* ================================= */}
+          {/* FOOTER */}
+          {/* ================================= */}
+
+          <footer>
+
+            <strong>
+              Cognitive Learning Assistant
+            </strong>
+
+            <span>
+              Understand • Visualize • Listen • Practice • Improve
+            </span>
+
+            <small>
+              Powered by AI ❤️
+            </small>
+
+          </footer>
+
+        </main>
+
+      </div>
 
     </div>
-
   );
-
 }
-
 
 export default App;

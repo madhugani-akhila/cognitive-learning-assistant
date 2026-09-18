@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  
+
   server: {
     proxy: {
       "/ask": {
@@ -11,7 +11,7 @@ export default defineConfig({
         changeOrigin: true,
       },
 
-      "/static": {
+      "/quiz-result": {
         target: "http://127.0.0.1:5000",
         changeOrigin: true,
       },
